@@ -8,8 +8,9 @@ module System.Console.Questioner
 import Control.Applicative ((<$>))
 import Control.Exception (bracket_)
 import Control.Monad ((>=>), forM_)
+import Data.List (delete)
 import System.Console.ANSI
-import System.IO (BufferMode(..), stdin, hSetBuffering, hSetEcho)
+import System.IO (BufferMode(..), stdin, hGetBuffering, hSetBuffering, hSetEcho)
 
 -- Base `Question` and `Question` instances
 -------------------------------------------------------------------------------
@@ -32,16 +33,20 @@ instance Question (String, (String, String)) String where
 instance Question (String, [String]) String where
     prompt = uncurry listPrompt
 
+instance Question (String, [String]) [String] where
+    prompt = uncurry checkboxPrompt
+
 -- Multiple choice prompts
 -------------------------------------------------------------------------------
 
-data ChoiceEvent = MoveUp | MoveDown | MakeChoice
+data ChoiceEvent = MoveUp | MoveDown | MakeChoice | ToggleSelection
   deriving(Eq, Ord, Show)
 
 charToChoiceEvent :: Char -> Maybe ChoiceEvent
 charToChoiceEvent 'j'  = Just MoveDown
 charToChoiceEvent 'k'  = Just MoveUp
 charToChoiceEvent '\n' = Just MakeChoice
+charToChoiceEvent ' '  = Just ToggleSelection
 charToChoiceEvent _    = Nothing
 
 listPrompt :: String -> [String] -> IO String
@@ -54,6 +59,9 @@ listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
     return $ options !! i
   where
     listenForSelection os = getDirection >>= \case
+        Nothing -> listenForSelection os
+        Just ToggleSelection -> listenForSelection os
+
         Just MakeChoice -> do
             forM_ (replicate (length (snd os) + 1) ())
                   (const (clearLine >> cursorUpLine 1))
@@ -66,14 +74,50 @@ listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
             render os'
             listenForSelection os'
 
-        Nothing -> listenForSelection os
-
     updateSelection MoveUp   (i, os) = ((i - 1) `mod` length os, os)
     updateSelection MoveDown (i, os) = ((i + 1) `mod` length os, os)
     updateSelection _ _ = error "Internal error, key not recognized"
 
-    render (s, indexedOptions) = forM_ indexedOptions $ \(o, i) ->
+    render (s, optionsI) = forM_ optionsI $ \(o, i) ->
         putStrLn $ (if i == s then "> " else "  ") ++ o
+
+checkboxPrompt :: String -> [String] -> IO [String]
+checkboxPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
+    putStrLn question
+    let selection = (0, [], zip options ([0..] :: [Int]))
+    render selection
+    is <- listenForSelection selection
+    return $ map (options !!) is
+  where
+    listenForSelection o = getDirection >>= \case
+        Just MakeChoice -> do
+            let (_, _, optionsI) = o in
+                forM_ (replicate (length optionsI + 1) ())
+                      (const (clearLine >> cursorUpLine 1))
+
+            clearLine
+            let (_, is, _) = o in
+                return is
+
+        Just d -> do
+            let (_, _, optionsI) = o in
+                clearFromCursorTo $ length optionsI
+            let o' = updateSelection d o in
+                render o' >> listenForSelection o'
+        Nothing -> listenForSelection o
+
+    updateSelection MoveUp   (i, is, os) = ((i - 1) `mod` length os, is, os)
+    updateSelection MoveDown (i, is, os) = ((i + 1) `mod` length os, is, os)
+    updateSelection ToggleSelection (i, is, os) = (i, is', os)
+      where
+        is' = if i `elem` is then delete i is else i:is
+    updateSelection _ _ = error "Internal error, key not recognized"
+
+    render (i, is, optionsI) =
+        forM_ optionsI $ \(o, j) ->
+            putStrLn $ (if i == j then ">" else " ") ++
+                       (if j `elem` is then "◉ " else "◯ ") ++
+                       o
 
 -- Utility functions
 -------------------------------------------------------------------------------
