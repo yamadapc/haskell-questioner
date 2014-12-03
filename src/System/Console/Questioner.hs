@@ -9,6 +9,7 @@ import Control.Applicative ((<$>))
 import Control.Exception (bracket_)
 import Control.Monad ((>=>), forM_)
 import System.Console.ANSI
+import System.IO (BufferMode(..), stdin, hSetBuffering, hSetEcho)
 
 -- Base `Question` and `Question` instances
 -------------------------------------------------------------------------------
@@ -44,7 +45,7 @@ charToChoiceEvent '\n' = Just MakeChoice
 charToChoiceEvent _    = Nothing
 
 listPrompt :: String -> [String] -> IO String
-listPrompt question options = withCursorHidden $ do
+listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
     putStrLn question
     -- selection has structure: (selected item's index, indexed options)
     let selection = (0, zip options ([0..] :: [Int]))
@@ -52,18 +53,19 @@ listPrompt question options = withCursorHidden $ do
     i <- listenForSelection selection
     return $ options !! i
   where
-    listenForSelection :: (Int, [(String, Int)]) -> IO Int
     listenForSelection os = getDirection >>= \case
         Just MakeChoice -> do
-            forM_ (replicate (length (snd os) + 2) ())
+            forM_ (replicate (length (snd os) + 1) ())
                   (const (clearLine >> cursorUpLine 1))
             clearLine
             return $ fst os
+
         Just d -> do
             let os' = updateSelection d os
             clearFromCursorTo $ length $ snd os
             render os'
             listenForSelection os'
+
         Nothing -> listenForSelection os
 
     updateSelection MoveUp   (i, os) = ((i - 1) `mod` length os, os)
@@ -77,9 +79,24 @@ listPrompt question options = withCursorHidden $ do
 -------------------------------------------------------------------------------
 
 -- |
+-- Performs an IO action with NoBuffering on standard input
+withNoBuffering :: IO a -> IO a
+withNoBuffering action = do
+    originalBuffering <- hGetBuffering stdin
+    bracket_
+        (hSetBuffering stdin NoBuffering)
+        (hSetBuffering stdin originalBuffering)
+        action
+
+-- |
 -- Performs an IO action with the console cursor hidden
-withCursorHidden :: IO a -> IO a
-withCursorHidden = bracket_ hideCursor showCursor
+withNoCursor :: IO a -> IO a
+withNoCursor = bracket_ hideCursor showCursor
+
+-- |
+-- Performs an IO action with console "echoing" supressed
+withNoEcho :: IO a -> IO a
+withNoEcho = bracket_ (hSetEcho stdin False) (hSetEcho stdin True)
 
 -- |
 -- Reads a "direction" from the terminal; doesn't currently parse escape
@@ -91,7 +108,7 @@ getDirection = charToChoiceEvent <$> getChar
 -- Clears the screen from the cursor's current position until `n` lines
 -- above it
 clearFromCursorTo :: Int -> IO ()
-clearFromCursorTo nlines = loop nlines >> cursorDownLine (nlines - 1)
+clearFromCursorTo nlines = loop nlines >> cursorDownLine (nlines - 2)
   where
     loop (-1) = return ()
     loop n = clearLine >> cursorUpLine 1 >> loop (n - 1)
