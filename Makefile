@@ -16,3 +16,6 @@ list-prompt: configure-examples examples/ListPrompt.hs
 
 checkbox-prompt: configure-examples examples/CheckboxPrompt.hs
 	cabal build questioner-checkbox-prompt
+
+spinner: configure-examples examples/Spinner.hs
+	cabal build questioner-spinner
