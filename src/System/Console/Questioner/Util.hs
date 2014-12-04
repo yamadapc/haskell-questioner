@@ -4,17 +4,23 @@ module System.Console.Questioner.Util
 import Control.Exception (bracket_)
 import System.Console.ANSI (clearLine, cursorDownLine, cursorUpLine,
                             hideCursor, showCursor)
-import System.IO (BufferMode(..), stdin, hGetBuffering, hSetBuffering, hSetEcho)
+import System.IO (BufferMode(..), Handle, hGetBuffering, hSetBuffering,
+                  hSetEcho, stdin)
 
 -- |
--- Performs an IO action with NoBuffering on standard input
-withNoBuffering :: IO a -> IO a
-withNoBuffering action = do
-    originalBuffering <- hGetBuffering stdin
+-- Performs an IO action with some buffer mode on a handle
+hWithBufferMode :: Handle -> BufferMode -> IO a -> IO a
+hWithBufferMode handle bufferMode action = do
+    originalBuffering <- hGetBuffering handle
     bracket_
-        (hSetBuffering stdin NoBuffering)
-        (hSetBuffering stdin originalBuffering)
+        (hSetBuffering handle bufferMode)
+        (hSetBuffering handle originalBuffering)
         action
+
+-- |
+-- Performs an IO action with NoBuffering on a handle
+hWithNoBuffering :: Handle -> IO a -> IO a
+hWithNoBuffering handle = hWithBufferMode handle NoBuffering
 
 -- |
 -- Performs an IO action with the console cursor hidden
