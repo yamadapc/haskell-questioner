@@ -4,6 +4,7 @@ module System.Console.Questioner.ProgressBar
 import Control.Applicative ((<$>))
 import Control.Concurrent (ThreadId, forkIO, killThread, threadDelay)
 import System.Console.ANSI (clearLine, setCursorColumn)
+import System.IO (BufferMode(NoBuffering), stdout)
 
 import System.Console.Questioner.Util
 
@@ -13,10 +14,13 @@ stopProgressBar :: ProgressBar -> IO ()
 stopProgressBar (ProgressBar tid) = do
     killThread tid
     clearLine
+    setCursorColumn 0
 
 spinner :: Int -> String -> IO ProgressBar
-spinner interval prompt = ProgressBar <$> forkIO (withNoCursor $ loop 0)
+spinner interval prompt = ProgressBar <$> forkIO (setup $ loop 0)
   where
+    setup = hWithBufferMode stdout NoBuffering
+
     loop i = do
         clearLine
         setCursorColumn 0
