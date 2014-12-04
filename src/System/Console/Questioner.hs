@@ -3,13 +3,25 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverlappingInstances #-}
 module System.Console.Questioner
+    (
+      Question(..)
+
+    , ChoiceEvent
+    , charToChoiceEvent
+    , listPrompt
+    , checkboxPrompt
+
+    , module System.Console.Questioner.ProgressBar
+    )
   where
 
 import Control.Applicative ((<$>))
 import Control.Monad ((>=>), forM_)
 import Data.List (delete)
 import System.Console.ANSI (clearLine, cursorUpLine)
+import System.IO (stdin)
 
+import System.Console.Questioner.ProgressBar
 import System.Console.Questioner.Util
 
 -- Base `Question` and `Question` instances
@@ -50,7 +62,7 @@ charToChoiceEvent ' '  = Just ToggleSelection
 charToChoiceEvent _    = Nothing
 
 listPrompt :: String -> [String] -> IO String
-listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
+listPrompt question options = setup $ do
     putStrLn question
     -- selection has structure: (selected item's index, indexed options)
     let selection = (0, zip options ([0..] :: [Int]))
@@ -58,6 +70,8 @@ listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
     i <- listenForSelection selection
     return $ options !! i
   where
+    setup = hWithNoBuffering stdin . withNoEcho
+
     listenForSelection os = charToChoiceEvent <$> getChar >>= \case
         Nothing -> listenForSelection os
         Just ToggleSelection -> listenForSelection os
@@ -82,13 +96,15 @@ listPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
         putStrLn $ (if i == s then "> " else "  ") ++ o
 
 checkboxPrompt :: String -> [String] -> IO [String]
-checkboxPrompt question options = withNoBuffering $ withNoEcho $ withNoCursor $ do
+checkboxPrompt question options = setup $ do
     putStrLn question
     let selection = (0, [], zip options ([0..] :: [Int]))
     render selection
     is <- listenForSelection selection
     return $ map (options !!) is
   where
+    setup = hWithNoBuffering stdin . withNoEcho
+
     listenForSelection o = charToChoiceEvent <$> getChar >>= \case
         Just MakeChoice -> do
             let (_, _, optionsI) = o in
