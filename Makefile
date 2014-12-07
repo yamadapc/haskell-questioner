@@ -1,4 +1,5 @@
 SRC=src/System/Console/Questioner.hs
+VERSION := $(shell cat questioner.cabal | grep -i "^version" | grep -o "[^ ]\+$$")
 
 default: questioner
 
@@ -24,3 +25,13 @@ spinner: configure-examples examples/Spinner.hs
 
 progressbar: configure-examples examples/ProgressBar.hs
 	cabal build questioner-progressbar
+
+publish:
+	echo "Assuming version: " $(VERSION)
+	echo "Would you like to continue?"
+	@read
+	git tag $(VERSION)
+	git push
+	git push --tags
+	cabal sdist
+	cabal upload dist/questioner-$(VERSION).tar.gz
