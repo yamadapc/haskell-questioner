@@ -1,6 +1,7 @@
 name:                questioner
 version:             0.1.0.0
 synopsis:            A package for prompting values from the command-line.
+description:         This is still being developed
 homepage:            https://github.com/yamadapc/haskell-questioner.git
 license:             MIT
 license-file:        LICENSE
