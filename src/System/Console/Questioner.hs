@@ -18,7 +18,8 @@ module System.Console.Questioner
 import Control.Applicative ((<$>))
 import Control.Monad ((>=>), forM_)
 import Data.List (delete)
-import System.Console.ANSI (clearLine, cursorUpLine)
+import System.Console.ANSI (SGR(..), Color(..), ColorIntensity(..),
+                            ConsoleLayer(..), clearLine, cursorUpLine, setSGR)
 import System.IO (stdin)
 
 import System.Console.Questioner.ProgressIndicators
@@ -93,7 +94,14 @@ listPrompt question options = setup $ do
     updateSelection _ _ = error "Internal error, key not recognized"
 
     render (s, optionsI) = forM_ optionsI $ \(o, i) ->
-        putStrLn $ (if i == s then "> " else "  ") ++ o
+        if i == s
+            then do
+                setSGR [ SetColor Foreground Vivid Blue ]
+                putStrLn $ "> " ++ o
+                setSGR []
+            else putStrLn $ "  " ++ o
+
+        -- putStrLn $ (if i == s then "> " else "  ") ++ o
 
 checkboxPrompt :: String -> [String] -> IO [String]
 checkboxPrompt question options = setup $ do
@@ -129,8 +137,11 @@ checkboxPrompt question options = setup $ do
         is' = if i `elem` is then delete i is else i:is
     updateSelection _ _ = error "Internal error, key not recognized"
 
-    render (i, is, optionsI) =
-        forM_ optionsI $ \(o, j) ->
-            putStrLn $ (if i == j then ">" else " ") ++
-                       (if j `elem` is then "◉ " else "◯ ") ++
-                       o
+    render (i, is, optionsI) = forM_ optionsI $ \(o, j) -> do
+        let checkbox = if j `elem` is then "◉ " else "◯ "
+        if i == j
+            then do
+                setSGR [ SetColor Foreground Vivid Blue ]
+                putStrLn $ ">" ++ checkbox ++ o
+                setSGR []
+            else putStrLn $ " " ++ checkbox ++ o
