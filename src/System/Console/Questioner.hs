@@ -11,7 +11,7 @@ module System.Console.Questioner
     , listPrompt
     , checkboxPrompt
 
-    , module System.Console.Questioner.ProgressBar
+    , module System.Console.Questioner.ProgressIndicators
     )
   where
 
@@ -21,7 +21,7 @@ import Data.List (delete)
 import System.Console.ANSI (clearLine, cursorUpLine)
 import System.IO (stdin)
 
-import System.Console.Questioner.ProgressBar
+import System.Console.Questioner.ProgressIndicators
 import System.Console.Questioner.Util
 
 -- Base `Question` and `Question` instances
