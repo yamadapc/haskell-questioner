@@ -36,7 +36,13 @@ withNoEcho = bracket_ (hSetEcho stdin False) (hSetEcho stdin True)
 -- Clears the screen from the cursor's current position until `n` lines
 -- above it
 clearFromCursorTo :: Int -> IO ()
-clearFromCursorTo nlines = loop nlines >> cursorDownLine (nlines - 2)
+clearFromCursorTo nlines = do
+    cursorUpLine nlines
+    loop nlines
+    cursorUpLine nlines
   where
-    loop (-1) = return ()
-    loop n = clearLine >> cursorUpLine 1 >> loop (n - 1)
+    loop 0 = return ()
+    loop n = do
+        clearLine
+        cursorDownLine 1
+        loop (n - 1)
