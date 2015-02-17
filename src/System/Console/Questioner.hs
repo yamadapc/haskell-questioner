@@ -44,6 +44,12 @@ instance Read a => Question String a where
 instance Question String String where
     prompt = putStr . (++ " ") >=> const getLine
 
+instance Question String (Maybe String) where
+    prompt = putStr . (++ " ") >=> const getLine >=> helper
+      where
+        helper [] = return Nothing
+        helper s = return $ Just s
+
 instance Question (String, (String, String)) String where
     prompt (s, (o1, o2)) = do
         putStr s
