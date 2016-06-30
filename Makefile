@@ -9,8 +9,8 @@ configure: questioner.cabal
 configure-examples: questioner.cabal
 	cabal configure -fexamples
 
-questioner: configure $(SRC)
-	cabal build
+questioner: $(SRC)
+	stack build
 
 examples: list-prompt checkbox-prompt spinner progressbar
 
