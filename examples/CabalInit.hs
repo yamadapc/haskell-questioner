@@ -1,10 +1,12 @@
-{-# LANGUAGE LambdaCase #-}
-import Data.Maybe
-import Text.Printf
-import System.Console.Questioner
-import System.Directory
-import System.FilePath
-import System.IO
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE OverlappingInstances #-}
+-- OverlappingInstances is not required in GHC7.12+
+import           Data.Maybe
+import           System.Console.Questioner
+import           System.Directory
+import           System.FilePath
+import           System.IO
+import           Text.Printf
 
 prompt' :: String -> String -> IO String
 prompt' message defaultValue = do
